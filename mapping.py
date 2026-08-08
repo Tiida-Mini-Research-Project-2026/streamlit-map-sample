@@ -23,8 +23,8 @@ with st.spinner("道路網データを取得・構築中...（初回は少し時
     G = load_graph()
 # 3. グラフ上の最寄りノードの特定
 # 注意: nearest_nodes は (グラフ, X(経度), Y(緯度)) の順で渡す必要があります
-orig_node = ox.distance.nearest_nodes(G, X=locations["いわき駅"][1], Y=locations["いわき駅"][0])
-dest_node = ox.distance.nearest_nodes(G, X=locations["福島高専"][1], Y=locations["福島高専"][0])
+orig_node = ox.nearest_nodes(G, X=locations["いわき駅"][1], Y=locations["いわき駅"][0])
+dest_node = ox.nearest_nodes(G, X=locations["福島高専"][1], Y=locations["福島高専"][0])
 # 4. 最短経路の計算
 # 実際の道路の長さ（weight='length'）を基準に計算
 route = nx.shortest_path(G, orig_node, dest_node, weight='length')
