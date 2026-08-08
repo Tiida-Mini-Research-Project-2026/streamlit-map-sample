@@ -4,3 +4,4 @@ streamlit-folium
 networkx
 osmnx
 scipy
+scikit-learn
