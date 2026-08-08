@@ -3,6 +3,7 @@ import folium
 from streamlit_folium import st_folium
 import networkx as nx
 import osmnx as ox
+import scipy
 # 1. 地点データの定義（緯度・経度）
 locations = {
     "いわき駅": (37.058, 140.8923),
