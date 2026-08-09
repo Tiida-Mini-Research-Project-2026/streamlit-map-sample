@@ -99,12 +99,12 @@ with col2:
     # 地図の初期化（高専を中心に）
     m = folium.Map(location=kosen_coord, zoom_start=13)
 
-    # 【追加】EasyPrintプラグインを追加して、画像としてエクスポートできるようにする
-    plugins.EasyPrint(
-        filename='route_map',
-        export=True,  # 印刷だけでなくエクスポート（画像保存）も可能にする
-        position='topleft',  # ボタンの位置
-        size_modes=['A4Portrait', 'A4Landscape']
+# 画像保存の代わりに、地図を全画面表示にするボタンを追加
+    plugins.Fullscreen(
+        position="topright",
+        title="フルスクリーン表示",
+        title_cancel="元のサイズに戻す",
+        force_separate_button=True
     ).add_to(m)
     
     # 高専のマーカー（星マーク）
