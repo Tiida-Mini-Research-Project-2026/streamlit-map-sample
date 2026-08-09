@@ -1,5 +1,6 @@
 import streamlit as st
 import folium
+from folium import plugins  # 【追加】pluginsをインポート
 from streamlit_folium import st_folium
 import networkx as nx
 import osmnx as ox
@@ -28,9 +29,7 @@ all_stations = {
 
 bike_speed_kmph = 15
 
-# ==========================================
-# 【追加】ユーザーが選択できるUI
-# ==========================================
+# ユーザーが選択できるUI
 selected_names = st.multiselect(
     "比較したい出発地を選択してください（複数選択可）",
     options=list(all_stations.keys()),
@@ -44,18 +43,19 @@ if not selected_names:
 
 # ユーザーが選択した地点だけの新しい辞書を作る
 selected_stations = {name: all_stations[name] for name in selected_names}
-# ==========================================
 
 
 # 2. 道路網データの取得
 @st.cache_resource
 def load_bike_graph():
+    # 圧縮されたバイナリファイルから読み込む
     with gzip.open("bike_graph.pkl.gz", "rb") as f:
         return pickle.load(f)
 
 with st.spinner("自転車用の道路網データを取得中..."):
     G = load_bike_graph()
 
+# 高専の最寄りノードを取得
 dest_node = ox.nearest_nodes(G, X=kosen_coord[1], Y=kosen_coord[0])
 
 
@@ -63,7 +63,7 @@ dest_node = ox.nearest_nodes(G, X=kosen_coord[1], Y=kosen_coord[0])
 results = []
 routes_dict = {}
 
-# 【変更】「selected_stations」に対してループを回す
+# 計算対象の地点に対してループを回す
 for station_name, coord in selected_stations.items():
     orig_node = ox.nearest_nodes(G, X=coord[1], Y=coord[0])
     
@@ -82,6 +82,7 @@ for station_name, coord in selected_stations.items():
     except nx.NetworkXNoPath:
         st.warning(f"{station_name}からのルートが見つかりませんでした。")
 
+# 結果をデータフレーム化して距離順に並べ替え
 df_results = pd.DataFrame(results).sort_values("距離 (km)")
 
 
@@ -95,8 +96,18 @@ with col1:
 
 with col2:
     st.subheader("🗺️ ルートマップ")
+    # 地図の初期化（高専を中心に）
     m = folium.Map(location=kosen_coord, zoom_start=13)
+
+    # 【追加】EasyPrintプラグインを追加して、画像としてエクスポートできるようにする
+    plugins.EasyPrint(
+        filename='route_map',
+        export=True,  # 印刷だけでなくエクスポート（画像保存）も可能にする
+        position='topleft',  # ボタンの位置
+        size_modes=['A4Portrait', 'A4Landscape']
+    ).add_to(m)
     
+    # 高専のマーカー（星マーク）
     folium.Marker(
         kosen_coord, popup="福島高専", 
         icon=folium.Icon(color="red", icon="star")
@@ -107,7 +118,7 @@ with col2:
         "darkblue", "darkgreen", "darkpurple", "cadetblue", "pink"
     ]
     
-    # 【変更】「selected_stations」に対してループを回す
+    # 選択された地点に対してループを回す
     for i, (station_name, coord) in enumerate(selected_stations.items()):
         color = colors[i % len(colors)]
         
