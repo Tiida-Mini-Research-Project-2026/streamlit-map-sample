@@ -4,16 +4,17 @@ from streamlit_folium import st_folium
 import networkx as nx
 import osmnx as ox
 import pandas as pd
-import gzip     
-import pickle   
+import gzip
+import pickle
 
 st.set_page_config(layout="wide") # 画面を広く使う
 st.title("🚲 福島高専への自転車通学ルート比較アプリ")
 
-# 1. 地点データの定義（中心となる目的地と、複数の出発地）
+# 1. 地点データの定義
 kosen_coord = (37.033577, 140.890804) # 福島高専
 
-stations = {
+# 辞書の名前を all_stations に変更
+all_stations = {
     "いわき駅": (37.0583, 140.8923),
     "内郷駅": (37.0366, 140.8653),
     "湯本駅": (36.9946, 140.8492),
@@ -25,37 +26,51 @@ stations = {
     "塩屋崎灯台": (36.9919, 140.9853)
 }
 
-# 自転車の平均時速（所要時間計算用）
 bike_speed_kmph = 15
 
-# 2. 道路網データの取得（事前保存したファイルから読み込む）
+# ==========================================
+# 【追加】ユーザーが選択できるUI
+# ==========================================
+selected_names = st.multiselect(
+    "比較したい出発地を選択してください（複数選択可）",
+    options=list(all_stations.keys()),
+    default=["いわき駅", "湯本駅"] # 最初から選ばれている項目
+)
+
+# 選択がゼロの場合はここで処理を止める（エラー防止）
+if not selected_names:
+    st.warning("出発地を1つ以上選択してください。")
+    st.stop()
+
+# ユーザーが選択した地点だけの新しい辞書を作る
+selected_stations = {name: all_stations[name] for name in selected_names}
+# ==========================================
+
+
+# 2. 道路網データの取得
 @st.cache_resource
 def load_bike_graph():
-    # 圧縮されたバイナリファイルから読み込む
     with gzip.open("bike_graph.pkl.gz", "rb") as f:
         return pickle.load(f)
 
 with st.spinner("自転車用の道路網データを取得中..."):
     G = load_bike_graph()
 
-# 高専の最寄りノードを取得
 dest_node = ox.nearest_nodes(G, X=kosen_coord[1], Y=kosen_coord[0])
+
 
 # 3. ルートと距離・時間の計算
 results = []
 routes_dict = {}
 
-for station_name, coord in stations.items():
-    # 各駅の最寄りノード
+# 【変更】「selected_stations」に対してループを回す
+for station_name, coord in selected_stations.items():
     orig_node = ox.nearest_nodes(G, X=coord[1], Y=coord[0])
     
-    # 経路と距離の計算
     try:
         route = nx.shortest_path(G, orig_node, dest_node, weight='length')
         distance_m = nx.shortest_path_length(G, orig_node, dest_node, weight='length')
-        distance_km = round(distance_m / 1000, 2) # kmに変換
-        
-        # 所要時間を計算（分）
+        distance_km = round(distance_m / 1000, 2)
         time_minutes = round((distance_km / bike_speed_kmph) * 60, 1)
         
         routes_dict[station_name] = route
@@ -67,11 +82,10 @@ for station_name, coord in stations.items():
     except nx.NetworkXNoPath:
         st.warning(f"{station_name}からのルートが見つかりませんでした。")
 
-# 結果をデータフレーム化して距離順に並べ替え
-# 表示用の列名に変更
 df_results = pd.DataFrame(results).sort_values("距離 (km)")
 
-# 4. 画面レイアウト（左に表、右に地図）
+
+# 4. 画面レイアウト
 col1, col2 = st.columns([1, 2])
 
 with col1:
@@ -81,45 +95,40 @@ with col1:
 
 with col2:
     st.subheader("🗺️ ルートマップ")
-    # 地図の初期化（高専を中心に）
     m = folium.Map(location=kosen_coord, zoom_start=13)
     
-    # 高専のマーカー（星マーク）
     folium.Marker(
         kosen_coord, popup="福島高専", 
         icon=folium.Icon(color="red", icon="star")
     ).add_to(m)
 
-    # 【1】色のリストを10色に拡張
     colors = [
         "blue", "green", "purple", "orange", "red", 
         "darkblue", "darkgreen", "darkpurple", "cadetblue", "pink"
     ]
     
-    for i, (station_name, coord) in enumerate(stations.items()):
+    # 【変更】「selected_stations」に対してループを回す
+    for i, (station_name, coord) in enumerate(selected_stations.items()):
         color = colors[i % len(colors)]
         
-        # 【3】場所の種類によってアイコンを変える
         if "駅" in station_name:
-            icon_name = "info-sign" # 駅は情報
+            icon_name = "info-sign"
         elif "創生大学" in station_name:
-            icon_name = "education" # 大学は教育
+            icon_name = "education"
         elif "公園" in station_name:
-            icon_name = "leaf" # 公園は葉っぱ
+            icon_name = "leaf"
         elif "アクアマリン" in station_name:
-            icon_name = "picture" # 水族館は写真
+            icon_name = "picture"
         elif "灯台" in station_name:
-            icon_name = "tower" # 灯台はタワー
+            icon_name = "tower"
         else:
-            icon_name = "map-marker" # その他
+            icon_name = "map-marker"
 
-        # マーカーの作成
         folium.Marker(
             coord, popup=f"{station_name}", 
             icon=folium.Icon(color=color, icon=icon_name, prefix='glyphicon')
         ).add_to(m)
         
-        # 経路の描画
         if station_name in routes_dict:
             route = routes_dict[station_name]
             route_coords = [(G.nodes[node]['y'], G.nodes[node]['x']) for node in route]
