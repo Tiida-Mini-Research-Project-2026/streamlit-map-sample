@@ -5,3 +5,6 @@ networkx
 osmnx
 scipy
 scikit-learn
+pandas
+gzip
+pickle
