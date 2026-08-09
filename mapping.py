@@ -4,6 +4,8 @@ from streamlit_folium import st_folium
 import networkx as nx
 import osmnx as ox
 import pandas as pd
+import gzip     
+import pickle   
 
 st.set_page_config(layout="wide") # 画面を広く使う
 st.title("🚲 福島高専への自転車通学ルート比較アプリ")
