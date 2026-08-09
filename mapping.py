@@ -29,8 +29,9 @@ bike_speed_kmph = 15
 # 2. 道路網データの取得（事前保存したファイルから読み込む）
 @st.cache_resource
 def load_bike_graph():
-    # アップロードしたファイルから直接読み込む（API通信をしない）
-    return ox.load_graphml("bike_graph.graphml")
+    # 圧縮されたバイナリファイルから読み込む
+    with gzip.open("bike_graph.pkl.gz", "rb") as f:
+        return pickle.load(f)
 
 with st.spinner("自転車用の道路網データを取得中..."):
     G = load_bike_graph()
