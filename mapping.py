@@ -21,9 +21,8 @@ stations = {
 # 2. 道路網データの取得（自転車用、高専を中心に半径7km）
 @st.cache_resource
 def load_bike_graph():
-    # 複数駅が収まるように半径7000m(7km)で取得
-    G = ox.graph_from_point(kosen_coord, dist=7000, network_type='bike')
-    return G
+    # アップロードしたファイルから直接読み込む（API通信をしない）
+    return ox.load_graphml("bike_graph.graphml")
 
 with st.spinner("自転車用の道路網データを取得中...（少し時間がかかります）"):
     G = load_bike_graph()
